@@ -6,6 +6,7 @@ const pool = require("../db");
 const { v4: uuidv4 } = require("uuid");
 const optionalAuth = require("../middleware/optionalAuthMiddleware");
 
+// 루틴 생성
 router.post("/", optionalAuth, async (req, res) => {
   const { name, description, is_public } = req.body;
 
@@ -47,3 +48,23 @@ router.post("/", optionalAuth, async (req, res) => {
 });
 
 module.exports = router;
+
+// 루틴 목록 조회
+router.get("/", optionalAuth, async (req, res) => {
+  if (req.user?.id) {
+    const userId = req.user.id;
+    const result = await pool.query(
+      "SELECT * FROM routine WHERE created_by = $1 ORDER BY created_at DESC",
+      [userId]
+    );
+    return res
+      .status(200)
+      .json({ message: "루틴 목록을 불러왔습니다.", routines: result.rows });
+  }
+  // 비로그인
+  return res.status(200).json({
+    message: "비로그인 상태입니다. 클라이언트에서 직접 관리해야합니다.",
+    routines: [],
+  });
+});
+
