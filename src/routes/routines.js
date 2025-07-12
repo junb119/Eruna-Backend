@@ -57,14 +57,41 @@ router.get("/", optionalAuth, async (req, res) => {
       "SELECT * FROM routine WHERE created_by = $1 ORDER BY created_at DESC",
       [userId]
     );
-    return res
-      .status(200)
-      .json({ message: "루틴 목록을 불러왔습니다.", routines: result.rows });
+    return res.status(200).json({
+      message: "루틴 목록을 불러왔습니다.",
+      routines: result.rows,
+    });
   }
+
   // 비로그인
   return res.status(200).json({
-    message: "비로그인 상태입니다. 클라이언트에서 직접 관리해야합니다.",
+    message: "비로그인 상태입니다. 클라이언트에서 직접 관리해야 합니다.",
     routines: [],
   });
 });
 
+// 루틴 상세 내용 조회 api
+router.get("/:id", optionalAuth, async (req, res) => {
+  const routineId = req.params.id;
+
+  if (req.user?.id) {
+    const result = await pool.query(
+      "SELECT * FROM routine WHERE id = $1 AND created_by = $2",
+      [routineId, req.user.id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ message: "루틴을 찾을 수 없습니다." });
+    }
+
+    return res.status(200).json({
+      message: "루틴 상세 조회 성공",
+      routine: result.rows[0],
+    });
+  }
+
+  // 비로그인 사용자는 상세 조회 제한
+  return res.status(401).json({
+    message: "로그인 후에만 루틴 상세 조회가 가능합니다.",
+  });
+});
