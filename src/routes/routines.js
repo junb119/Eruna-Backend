@@ -1,7 +1,7 @@
 // routes/routines.js
 
 const express = require("express");
-const router = express.Router(); // ✅ 이 줄이 반드시 먼저 와야 합니다
+const router = express.Router();
 const pool = require("../db");
 const { v4: uuidv4 } = require("uuid");
 const optionalAuth = require("../middleware/optionalAuthMiddleware");
@@ -93,5 +93,33 @@ router.get("/:id", optionalAuth, async (req, res) => {
   // 비로그인 사용자는 상세 조회 제한
   return res.status(401).json({
     message: "로그인 후에만 루틴 상세 조회가 가능합니다.",
+  });
+});
+
+router.patch("/:id", optionalAuth, async (req, res) => {
+  const { routindId } = req.params;
+  const { name, description, is_public } = req.body;
+
+  if (!req.user?.id) {
+    return res.status(401).json({ message: "로그인이 필요합니다" });
+  }
+
+  const check = await pool.query(
+    "SELECT * FROM routine WHERE id= $1 AND created_by =$2",
+    [routindId, req.user.id]
+  );
+  if (check.rows.length === 0) {
+    return res.status(403).json({ message: "수정 권한이 없습니다." });
+  }
+
+  const now = new Date().toISOString();
+  const result = await pool.query(
+    "UPDATE routine SET name = $1 , description = $2, is_public = $3, updated_at = $4 WHERE id = $5 RETURNING *",
+    [name, description, is_public, now, id]
+  );
+
+  return res.status(200).json({
+    message: "루틴이 수정되었습니다",
+    routine: result.rows[0],
   });
 });
