@@ -96,6 +96,7 @@ router.get("/:id", optionalAuth, async (req, res) => {
   });
 });
 
+// 루틴 수정
 router.patch("/:id", optionalAuth, async (req, res) => {
   const { routindId } = req.params;
   const { name, description, is_public } = req.body;
@@ -122,4 +123,29 @@ router.patch("/:id", optionalAuth, async (req, res) => {
     message: "루틴이 수정되었습니다",
     routine: result.rows[0],
   });
+});
+
+// 루틴 삭제
+router.delete("/:id", optionalAuth, async (req, res) => {
+  const { id } = req.params;
+
+  // 1. 인증
+  if (!req.user?.id) {
+    return res.status(401).json({ message: "로그인이 필요합니다." });
+  }
+
+  // 2. 인가 (본인 루틴인지 확인)
+  const check = await pool.query(
+    "SELECT * FROM routine WHERE id = $1 AND created_by = $2",
+    [id, req.user.id]
+  );
+
+  if (check.rows.length === 0) {
+    return res.status(403).json({ message: "삭제 권한이 없습니다." });
+  }
+
+  // 3. 삭제 실행
+  await pool.query("DELETE FROM routine WHERE id = $1", [id]);
+
+  return res.status(200).json({ message: "루틴이 삭제되었습니다." });
 });
