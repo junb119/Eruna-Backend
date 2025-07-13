@@ -3,6 +3,38 @@ const router = express.Router();
 const pool = require("../db");
 const { v4: uuidv4 } = require("uuid");
 const optionalAuth = require("../middleware/optionalAuthMiddleware");
+// ✅ 루틴 구성 운동 목록 조회
+router.get("/:routineId", optionalAuth, async (req, res) => {
+  const { routineId } = req.params;
+
+  // 로그인 확인
+  if (!req.user?.id) {
+    return res.status(401).json({ message: "로그인이 필요합니다." });
+  }
+
+  // 루틴 소유자 확인
+  const check = await pool.query(
+    "SELECT * FROM routine WHERE id = $1 AND created_by = $2",
+    [routineId, req.user.id]
+  );
+
+  if (check.rows.length === 0) {
+    return res.status(403).json({ message: "조회 권한이 없습니다." });
+  }
+
+  // 루틴에 포함된 구성 항목 조회
+  const result = await pool.query(
+    `SELECT * FROM routine_item
+     WHERE routine_id = $1
+     ORDER BY "order" ASC`,
+    [routineId]
+  );
+
+  return res.status(200).json({
+    message: "루틴 구성 운동 목록 조회 성공",
+    items: result.rows,
+  });
+});
 
 // ✅ 구성 운동 추가 (로그인/비로그인 분기)
 router.post("/:routineId", optionalAuth, async (req, res) => {
@@ -138,6 +170,33 @@ router.patch("/:itemId", optionalAuth, async (req, res) => {
     message: "운동 항목이 수정되었습니다.",
     item: result.rows[0],
   });
+});
+
+// ✅ 구성 운동 항목 삭제
+router.delete("/:itemId", optionalAuth, async (req, res) => {
+  const { itemId } = req.params;
+
+  // 1. 로그인 확인
+  if (!req.user?.id) {
+    return res.status(401).json({ message: "로그인이 필요합니다." });
+  }
+
+  // 2. 해당 아이템이 본인 루틴인지 확인
+  const check = await pool.query(
+    `SELECT ri.* FROM routine_item ri
+     JOIN routine r ON ri.routine_id = r.id
+     WHERE ri.id = $1 AND r.created_by = $2`,
+    [itemId, req.user.id]
+  );
+
+  if (check.rows.length === 0) {
+    return res.status(403).json({ message: "삭제 권한이 없습니다." });
+  }
+
+  // 3. 삭제 실행
+  await pool.query("DELETE FROM routine_item WHERE id = $1", [itemId]);
+
+  return res.status(200).json({ message: "운동 항목이 삭제되었습니다." });
 });
 
 module.exports = router;
