@@ -110,8 +110,31 @@ router.patch("/:id", optionalAuth, async (req, res) => {
     workout: result.rows[0],
   });
 });
+js;
 
+// ✅ 운동 삭제
+router.delete("/:id", optionalAuth, async (req, res) => {
+  const { id } = req.params;
 
+  // 1. 인증
+  if (!req.user?.id) {
+    return res.status(401).json({ message: "로그인이 필요합니다." });
+  }
 
+  // 2. 인가 (본인 운동인지 확인)
+  const check = await pool.query(
+    "SELECT * FROM workout WHERE id = $1 AND created_by = $2",
+    [id, req.user.id]
+  );
+
+  if (check.rows.length === 0) {
+    return res.status(403).json({ message: "삭제 권한이 없습니다." });
+  }
+
+  // 3. 삭제 실행
+  await pool.query("DELETE FROM workout WHERE id = $1", [id]);
+
+  return res.status(200).json({ message: "운동이 삭제되었습니다." });
+});
 
 module.exports = router;
