@@ -98,5 +98,29 @@ router.patch("/:id", optionalAuth, async (req, res) => {
     category: result.rows[0],
   });
 });
+// ✅ 카테고리 삭제
+router.delete("/:id", optionalAuth, async (req, res) => {
+  const { id } = req.params;
+
+  // 1. 로그인 확인
+  if (!req.user?.id) {
+    return res.status(401).json({ message: "로그인이 필요합니다." });
+  }
+
+  // 2. 본인 소유 확인
+  const check = await pool.query(
+    "SELECT * FROM workout_category WHERE id = $1 AND created_by = $2",
+    [id, req.user.id]
+  );
+
+  if (check.rows.length === 0) {
+    return res.status(403).json({ message: "삭제 권한이 없습니다." });
+  }
+
+  // 3. 삭제 실행
+  await pool.query("DELETE FROM workout_category WHERE id = $1", [id]);
+
+  return res.status(200).json({ message: "카테고리가 삭제되었습니다." });
+});
 
 module.exports = router;
