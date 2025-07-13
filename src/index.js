@@ -24,6 +24,7 @@ app.use("/api/protected", protectedRoutes);
 app.use("/api/routines", routineRoutes);
 app.use("/api/routine-items", require("./routes/routineItems"));
 app.use("/api/workout-categories", require("./routes/workoutCategories"));
+app.use("/api/workout-types", require("./routes/workoutTypes"));
 
 app.get("/", (req, res) => {
   res.send("Erona API is running 🚀");
