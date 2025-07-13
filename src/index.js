@@ -21,7 +21,8 @@ app.use("/api/users", userRoutes);
 app.use("/api/auth", authRoutes); // "/api/auth/login" 엔드포인트가 동작하게 함
 app.use("/api/protected", protectedRoutes);
 // 테스트용 기본 라우터
-app.use("/api/routines", routineRoutes); 
+app.use("/api/routines", routineRoutes);
+app.use("/api/routine-items", require("./routes/routineItems"));
 
 app.get("/", (req, res) => {
   res.send("Erona API is running 🚀");
