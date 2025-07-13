@@ -74,6 +74,43 @@ router.post("/", optionalAuth, async (req, res) => {
     },
   });
 });
+// ✅ 운동 수정
+router.patch("/:id", optionalAuth, async (req, res) => {
+  const { id } = req.params;
+  const { name, category_id, type_id } = req.body;
+
+  // 1. 인증 확인
+  if (!req.user?.id) {
+    return res.status(401).json({ message: "로그인이 필요합니다." });
+  }
+
+  // 2. 인가 확인 (본인 소유 운동인지)
+  const check = await pool.query(
+    "SELECT * FROM workout WHERE id = $1 AND created_by = $2",
+    [id, req.user.id]
+  );
+
+  if (check.rows.length === 0) {
+    return res.status(403).json({ message: "수정 권한이 없습니다." });
+  }
+
+  // 3. 수정 실행
+  const result = await pool.query(
+    `UPDATE workout
+     SET name = $1,
+         category_id = $2,
+         type_id = $3
+     WHERE id = $4
+     RETURNING *`,
+    [name, category_id || null, type_id || null, id]
+  );
+
+  return res.status(200).json({
+    message: "운동이 수정되었습니다.",
+    workout: result.rows[0],
+  });
+});
+
 
 
 
