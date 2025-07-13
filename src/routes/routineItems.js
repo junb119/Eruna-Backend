@@ -80,4 +80,64 @@ router.post("/:routineId", optionalAuth, async (req, res) => {
   });
 });
 
+// ✅ 구성 운동 수정
+router.patch("/:itemId", optionalAuth, async (req, res) => {
+  const { itemId } = req.params;
+  const { order, set_count, rep_count, duration, distance, weight, note } =
+    req.body;
+
+  // 1. 로그인 확인
+  if (!req.user?.id) {
+    return res.status(401).json({ message: "로그인이 필요합니다." });
+  }
+
+  // 2. 소유자 확인: routine_item → routine → created_by 검사
+  const check = await pool.query(
+    `SELECT ri.*, r.created_by
+     FROM routine_item ri
+     JOIN routine r ON ri.routine_id = r.id
+     WHERE ri.id = $1`,
+    [itemId]
+  );
+
+  if (check.rows.length === 0) {
+    return res.status(404).json({ message: "해당 항목을 찾을 수 없습니다." });
+  }
+
+  const item = check.rows[0];
+
+  if (item.created_by !== req.user.id) {
+    return res.status(403).json({ message: "수정 권한이 없습니다." });
+  }
+
+  // 3. 수정 실행
+  const result = await pool.query(
+    `UPDATE routine_item SET
+      "order" = $1,
+      set_count = $2,
+      rep_count = $3,
+      duration = $4,
+      distance = $5,
+      weight = $6,
+      note = $7
+     WHERE id = $8
+     RETURNING *`,
+    [
+      order,
+      set_count,
+      rep_count,
+      duration,
+      distance,
+      weight,
+      note || "",
+      itemId,
+    ]
+  );
+
+  return res.status(200).json({
+    message: "운동 항목이 수정되었습니다.",
+    item: result.rows[0],
+  });
+});
+
 module.exports = router;
