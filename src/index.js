@@ -23,6 +23,7 @@ app.use("/api/protected", protectedRoutes);
 // 테스트용 기본 라우터
 app.use("/api/routines", routineRoutes);
 app.use("/api/routine-items", require("./routes/routineItems"));
+app.use("/api/workout-categories", require("./routes/workoutCategories"));
 
 app.get("/", (req, res) => {
   res.send("Erona API is running 🚀");
