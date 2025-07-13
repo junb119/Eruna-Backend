@@ -4,6 +4,31 @@ const pool = require("../db");
 const { v4: uuidv4 } = require("uuid");
 const optionalAuth = require("../middleware/optionalAuthMiddleware");
 
+// ✅ 카테고리 목록 조회
+router.get("/", optionalAuth, async (req, res) => {
+  // 🔐 로그인 사용자
+  if (req.user?.id) {
+    const result = await pool.query(
+      `SELECT * FROM workout_category
+       WHERE created_by = $1
+       ORDER BY created_at DESC`,
+      [req.user.id]
+    );
+
+    return res.status(200).json({
+      message: "카테고리 목록을 불러왔습니다.",
+      categories: result.rows,
+    });
+  }
+
+  // 🚫 비로그인 사용자
+  return res.status(200).json({
+    message: "비로그인 상태입니다. 카테고리는 클라이언트에서 관리됩니다.",
+    categories: [],
+    is_guest: true,
+  });
+});
+
 // ✅ 카테고리 추가
 router.post("/", optionalAuth, async (req, res) => {
   const { name } = req.body;
@@ -40,6 +65,37 @@ router.post("/", optionalAuth, async (req, res) => {
       created_at: now,
       is_guest: true,
     },
+  });
+});
+// ✅ 카테고리 수정
+router.patch("/:id", optionalAuth, async (req, res) => {
+  const { id } = req.params;
+  const { name } = req.body;
+
+  // 1. 로그인 확인
+  if (!req.user?.id) {
+    return res.status(401).json({ message: "로그인이 필요합니다." });
+  }
+
+  // 2. 본인 카테고리인지 확인
+  const check = await pool.query(
+    "SELECT * FROM workout_category WHERE id = $1 AND created_by = $2",
+    [id, req.user.id]
+  );
+
+  if (check.rows.length === 0) {
+    return res.status(403).json({ message: "수정 권한이 없습니다." });
+  }
+
+  // 3. 수정 실행
+  const result = await pool.query(
+    "UPDATE workout_category SET name = $1 WHERE id = $2 RETURNING *",
+    [name, id]
+  );
+
+  return res.status(200).json({
+    message: "카테고리가 수정되었습니다.",
+    category: result.rows[0],
   });
 });
 
